@@ -16,9 +16,9 @@ RUN ln -s /etc/nginx/sites-available/mywebsite /etc/nginx/sites-enabled/
 
 #SSL
 RUN mkdir etc/nginx/ssl
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/nginx-selfsigned.key -out /etc/nginx/ssl/nginx-selfsigned.crt -subj "/C=FR/ST=Lille/L=Paris/O=42 School/OU=flolefeb/CN=mywebsite"
-#RUN echo "ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;\nssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;" > /etc/nginx/snippets/self-signed.conf
-
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt -subj "/C=FR/ST=Lille/L=Paris/O=42 School/OU=flolefeb/CN=mywebsite"
+COPY ./srcs/ssl-params.conf /etc/nginx/snippets/
+RUN echo "ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;\nssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;" > /etc/nginx/snippets/self-signed.conf
 
 #mariaDB - 1 database, 1 person, 1 access
 RUN service mysql start &&\

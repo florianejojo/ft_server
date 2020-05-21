@@ -1,41 +1,44 @@
 FROM debian:buster
 
-COPY /srcs/cmd.sh ./
+RUN apt-get update && apt-get install -y nginx
+RUN apt-get install -y mariadb-server
+RUN apt-get install -y openssl
 
-RUN apt-get update && apt-get install -y nginx &&\
-    apt-get install -y wget &&\
-    apt-get install -y mariadb-server &&\
-    apt-get install -y php-fpm php-mysql php-json php-mbstring php-curl php-gd php-intl php-mbstring php-soap php-xml php-xmlrpc php-zip
-
+#Installing PHP for Processing
+RUN apt-get -y install php-fpm php-mysql
 
 #Configuring Nginx to Use the PHP Processor
-RUN chown -R www-data:www-data /var/www/* && chmod -R 755 /var/www/*
-RUN mkdir -p /var/www/mywebsite/phpmyadmin /var/www/mywebsite/wordpress
-COPY /srcs/nginx.conf /etc/nginx/sites-available/mywebsite
-RUN ln -s /etc/nginx/sites-available/mywebsite /etc/nginx/sites-enabled/
+RUN mkdir -p /var/www/my_domain
+RUN chown -R www-data:www-data /var/www/my_domain && chmod -R 755 /var/www/my_domain
 
-#SSL
-RUN mkdir etc/nginx/ssl
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt -subj "/C=FR/ST=Lille/L=Paris/O=42 School/OU=flolefeb/CN=mywebsite"
-COPY ./srcs/ssl-params.conf /etc/nginx/snippets/
-RUN echo "ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;\nssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;" > /etc/nginx/snippets/self-signed.conf
+COPY /srcs/my_domain /etc/nginx/sites-available/
+RUN ln -s /etc/nginx/sites-available/my_domain /etc/nginx/sites-enabled/
 
 #mariaDB - 1 database, 1 person, 1 access
+RUN mkdir /var/www/my_domain/mariadb 
+COPY srcs/create_tables.sql /var/www/my_domain/mariadb
 RUN service mysql start &&\
-    mariadb -e "CREATE DATABASE wp_database;" &&\
-    mariadb -e "GRANT ALL ON wp_database.* TO 'wp_user'@'localhost' IDENTIFIED BY 'wp_pass' WITH GRANT OPTION;" &&\
+    mariadb < /var/www/my_domain/mariadb/create_tables.sql && \
+	mariadb -e "CREATE DATABASE database1 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;" && \
+    mariadb -e "GRANT ALL ON database1.* TO 'user1'@'localhost' IDENTIFIED BY 'pass1' WITH GRANT OPTION;" &&\
     mariadb -e "FLUSH PRIVILEGES;"
 
-#Install wordpress
-RUN wget https://wordpress.org/latest.tar.gz &&\
-    tar -xvzf latest.tar.gz -C /var/www/mywebsite/ 
-COPY /srcs/wordpress.conf /var/www/mywebsite/
+#ssl
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt -subj '/C=FR/ST=75017/L=Paris/O=42/CN=my_domain' 
 
-#Install and configure PHPmyadmin
-
+#Install and configure PHPMYADMIN
+RUN apt-get install -y php-json php-mbstring
+RUN apt-get install -y wget
+RUN mkdir /var/www/my_domain/phpmyadmin
 RUN wget https://files.phpmyadmin.net/phpMyAdmin/4.9.0.1/phpMyAdmin-4.9.0.1-all-languages.tar.gz &&\
-    tar -zxvf phpMyAdmin-4.9.0.1-all-languages.tar.gz --strip-components 1 -C /var/www/mywebsite/phpmyadmin
-COPY /srcs/config.inc.php /var/www/mywebsite/phpmyadmin
+    tar -zxvf phpMyAdmin-4.9.0.1-all-languages.tar.gz --strip-components 1 -C /var/www/my_domain/phpmyadmin
+COPY ./srcs/config.inc.php /var/www/my_domain/phpmyadmin
 
-CMD bash cmd.sh
+#install WP
+RUN apt-get install -y php-curl php-gd php-intl php-mbstring php-soap php-xml php-xmlrpc php-zip
+RUN mkdir /var/www/my_domain/wordpress
+RUN wget https://wordpress.org/latest.tar.gz && tar -zxvf latest.tar.gz --strip-components 1 -C /var/www/my_domain/wordpress
+COPY ./srcs/wp-config.php /var/www/my_domain/wordpress/wp-config.php
 
+COPY srcs/start_services.sh ./
+CMD bash start_services.sh

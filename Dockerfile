@@ -15,9 +15,9 @@ RUN ln -s /etc/nginx/sites-available/my_domain /etc/nginx/sites-enabled/
 
 #mariaDB - 1 database, 1 person, 1 access
 RUN mkdir /var/www/my_domain/mariadb 
-#COPY srcs/create_tables.sql /var/www/my_domain/mariadb
+COPY srcs/create_tables.sql /var/www/my_domain/mariadb
 RUN service mysql start &&\
-    #mariadb < /var/www/my_domain/mariadb/create_tables.sql && \
+    mariadb < /var/www/my_domain/mariadb/create_tables.sql && \
 	mariadb -e "CREATE DATABASE database1 DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;" && \
     mariadb -e "GRANT ALL ON database1.* TO 'user1'@'localhost' IDENTIFIED BY 'pass1' WITH GRANT OPTION;" &&\
     mariadb -e "FLUSH PRIVILEGES;"
